@@ -1,27 +1,50 @@
-import { ethers } from "hardhat";
+const hre = require("hardhat");
+import { ethers } from "hardhat"
+import { 
+  Contract, 
+  ContractFactory 
+} from "ethers"
 
-async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+const main = async(): Promise<any> => {
+  const deployer = "0x28400aa592483d6DC6776B82B25dD2E517863050";
 
-  const lockedAmount = ethers.parseEther("0.001");
+  const USDTContract: ContractFactory = await ethers.getContractFactory("USDT");
+  const usdt : Contract = await USDTContract.deploy(deployer);
+  await usdt.waitForDeployment();
+  console.log("USDT deployed:", usdt.address);
 
-  const lock = await ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
+  const CollateralContract: ContractFactory = await ethers.getContractFactory("Collateral");
+  const collateral : Contract = await CollateralContract.deploy(deployer);
+  await collateral.waitForDeployment();
+  console.log("Collateral deployed:", collateral.address);
+
+  const LoanContract: ContractFactory = await ethers.getContractFactory("LoanContract");
+  const loanContract: Contract = await LoanContract.deploy(usdt.address, collateral.address);
+  await loanContract.waitForDeployment();
+  console.log("LoanContract deployed:", loanContract.address);
+
+  await hre.run("verify:verify", {
+    address: usdt.address,
+    constructorArguments: [deployer],
+    contract: "contracts/USDT.sol:USDT" 
+  });
+  
+  await hre.run("verify:verify", {
+    address: collateral.address,
+    constructorArguments: [deployer],
+    contract: "contracts/Collateral.sol:Collateral"
   });
 
-  await lock.waitForDeployment();
-
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+  await hre.run("verify:verify", {
+    address: loanContract.address,
+    constructorArguments: [usdt.address, collateral.address],
+    contract: "contracts/LoanContract.sol:LoanContract"
+  });
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
