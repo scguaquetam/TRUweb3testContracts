@@ -3,8 +3,20 @@ import "@nomicfoundation/hardhat-toolbox";
 
 import { PRIVATE_KEY, APIKEY, INFURA_API_KEY } from "./.env.json"
 
-const config: HardhatUserConfig = {
-  solidity: "0.8.20",
-};
-
-export default config;
+export default {
+  etherscan: {
+      apiKey: APIKEY,
+    },
+solidity: {
+  version: "0.8.20",
+  settings: {
+    evmVersion: 'paris'
+  }
+},
+networks: {
+  sepolia: {
+    url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
+    accounts: [PRIVATE_KEY]
+  }
+}
+}
